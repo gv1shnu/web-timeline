@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Scanning… · ceh-recon{% endblock %}
+{% block body %}
+<style>
+  .head { display:flex; align-items:center; gap:12px; margin-bottom:16px; }
+  .dot { width:10px; height:10px; border-radius:50%; background:var(--accent); animation:pulse 1s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+  .console { background:#0a0c11; border:1px solid var(--border); border-radius:10px; padding:14px 16px; font:12.5px/1.7 ui-monospace,SFMono-Regular,Menlo,monospace; height:60vh; overflow-y:auto; white-space:pre-wrap; color:#c7cde0; }
+  .console .l { display:block; }
+  #done { display:none; margin-top:16px; }
+</style>
+<div class="head">
+  <span class="dot" id="dot"></span>
+  <h1 style="margin:0" id="status">Scanning {{ entry.domains|join(", ") }}…</h1>
+  <span class="badge {{ 'badge-active' if entry.active else 'badge-passive' }}">{{ 'active' if entry.active else 'passive' }}</span>
+</div>
+<div class="console" id="console"></div>
+<div id="done"><a class="btn" id="reportLink" href="#">View report →</a></div>
+
+<script>
+  const box = document.getElementById('console');
+  const es = new EventSource('/stream/{{ run_id }}');
+  function add(txt) {
+    const el = document.createElement('span'); el.className='l'; el.textContent = txt;
+    box.appendChild(el); box.scrollTop = box.scrollHeight;
+  }
+  es.onmessage = e => add(e.data);
+  function finish(status, rel) {
+    document.getElementById('dot').style.animation = 'none';
+    document.getElementById('dot').style.background = status==='done' ? '#4ade80' : '#f87171';
+    document.getElementById('status').textContent = status==='done' ? 'Scan complete' : 'Scan failed';
+    if (status==='done' && rel) {
+      document.getElementById('reportLink').href = '/run/' + rel;
+      document.getElementById('done').style.display = 'block';
+    }
+    es.close();
+  }
+  es.addEventListener('done', e => finish('done', e.data));
+  es.addEventListener('error', e => { if (es.readyState === 2) finish('error', ''); });
+</script>
+{% endblock %}

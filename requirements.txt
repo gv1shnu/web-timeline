@@ -1,0 +1,6 @@
+# Python dependencies for the ceh-automation orchestrator.
+# The heavy lifting is done by external CLI tools (see scripts/install_tools.sh).
+PyYAML>=6.0
+Jinja2>=3.1
+# Web dashboard (serve.py). Optional — the CLI works without it.
+Flask>=3.0

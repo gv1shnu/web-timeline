@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}New scan · ceh-recon{% endblock %}
+{% block nav_new %}active{% endblock %}
+{% block body %}
+<style>
+  .form-card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:24px; max-width:640px; }
+  label.field { display:block; font-size:13px; font-weight:600; margin-bottom:6px; }
+  textarea, input[type=text] { width:100%; background:#12151d; border:1px solid var(--border); border-radius:8px; color:var(--fg); padding:10px 12px; font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; }
+  textarea { min-height:96px; resize:vertical; }
+  .hint { color:var(--muted); font-size:12px; margin:6px 0 20px; }
+  .check { display:flex; gap:10px; align-items:flex-start; background:#12151d; border:1px solid var(--border); border-radius:8px; padding:12px 14px; margin-bottom:14px; }
+  .check input { margin-top:3px; }
+  .check .t { font-size:13px; font-weight:600; }
+  .check .d { color:var(--muted); font-size:12px; }
+  .warn { border-color:#5a2626; }
+  #authRow { display:none; }
+</style>
+
+<h1>New scan</h1>
+<div class="sub">Enter one or more target domains. Passive by default.</div>
+
+<form class="form-card" method="post" action="/scan" onsubmit="return check()">
+  <label class="field" for="domains">Target domains</label>
+  <textarea id="domains" name="domains" placeholder="example.com&#10;sub.example.com" required></textarea>
+  <div class="hint">One per line, or comma/space separated.</div>
+
+  <div class="check">
+    <input type="checkbox" id="active" name="active" onchange="toggleAuth()">
+    <div>
+      <div class="t">Active mode — port scan + nuclei vulnerability scan</div>
+      <div class="d">Sends real scan traffic to the targets. Off = passive (safe) recon only.</div>
+    </div>
+  </div>
+
+  <div class="check warn" id="authRow">
+    <input type="checkbox" id="authorized" name="authorized">
+    <div>
+      <div class="t">I am authorized to actively scan these targets</div>
+      <div class="d">Only enable for systems you own or have written permission to test.</div>
+    </div>
+  </div>
+
+  <button class="btn" type="submit">Start scan</button>
+</form>
+
+<script>
+  function toggleAuth() {
+    document.getElementById('authRow').style.display =
+      document.getElementById('active').checked ? 'flex' : 'none';
+  }
+  function check() {
+    if (document.getElementById('active').checked &&
+        !document.getElementById('authorized').checked) {
+      alert('Confirm you are authorized to actively scan these targets.');
+      return false;
+    }
+    return true;
+  }
+</script>
+{% endblock %}

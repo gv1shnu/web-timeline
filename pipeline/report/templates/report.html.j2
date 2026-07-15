@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recon Report — {{ data.targets | join(", ") }}</title>
+<style>
+  :root { --bg:#0f1117; --card:#181b24; --border:#262b38; --fg:#e6e9ef; --muted:#8b93a7; --accent:#4f8cff; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+  a { color:var(--accent); text-decoration:none; word-break:break-all; }
+  a:hover { text-decoration:underline; }
+  header { padding:28px 32px; border-bottom:1px solid var(--border); background:linear-gradient(180deg,#141824,#0f1117); }
+  header h1 { margin:0 0 6px; font-size:22px; }
+  header .meta { color:var(--muted); font-size:13px; }
+  .badge-active { display:inline-block; padding:2px 10px; border-radius:20px; font-size:12px; font-weight:600; margin-left:8px; }
+  .active-yes { background:#7c1d1d; color:#fee; }
+  .active-no { background:#1f3a24; color:#d9f5e0; }
+  main { padding:24px 32px; max-width:1400px; margin:0 auto; }
+  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:14px; margin-bottom:28px; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:16px; }
+  .card .n { font-size:26px; font-weight:700; }
+  .card .l { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.5px; }
+  section { margin-bottom:34px; }
+  section h2 { font-size:16px; border-bottom:1px solid var(--border); padding-bottom:8px; margin-bottom:14px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th,td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--border); vertical-align:top; }
+  th { color:var(--muted); font-weight:600; position:sticky; top:0; background:var(--bg); }
+  tr:hover td { background:#1c2029; }
+  .sev { display:inline-block; padding:2px 8px; border-radius:5px; color:#fff; font-size:11px; font-weight:700; text-transform:uppercase; }
+  .sevbar { display:flex; height:26px; border-radius:6px; overflow:hidden; margin-bottom:10px; }
+  .sevbar span { display:flex; align-items:center; justify-content:center; color:#fff; font-size:11px; font-weight:700; }
+  .pill { display:inline-block; background:#232838; border:1px solid var(--border); border-radius:20px; padding:1px 8px; font-size:11px; margin:1px; color:#c7cde0; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:14px; }
+  .shot { background:var(--card); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+  .shot img { width:100%; display:block; background:#fff; aspect-ratio:16/10; object-fit:cover; object-position:top; }
+  .shot .cap { padding:8px 10px; font-size:12px; }
+  .shot .cap .st { color:var(--muted); }
+  details summary { cursor:pointer; color:var(--muted); margin-bottom:8px; }
+  .muted { color:var(--muted); }
+  .status-2xx{color:#4ade80}.status-3xx{color:#60a5fa}.status-4xx{color:#fbbf24}.status-5xx{color:#f87171}
+  code { background:#232838; padding:1px 5px; border-radius:4px; font-size:12px; }
+  .empty { color:var(--muted); font-style:italic; padding:8px 0; }
+  .exp-card { background:var(--card); border:1px solid var(--border); border-left:3px solid #b91c1c; border-radius:8px; padding:12px 14px; margin-bottom:12px; }
+  .exp-head { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:2px; }
+  .exp-list { list-style:none; margin:8px 0 0; padding:0; }
+  .exp-list li { padding:4px 0; border-top:1px solid var(--border); font-size:13px; }
+  .src { display:inline-block; font-size:10px; font-weight:700; text-transform:uppercase; padding:1px 6px; border-radius:4px; margin-right:6px; }
+  .src-exploit-db { background:#7c1d1d; color:#ffecec; }
+  .src-github { background:#24292f; color:#fff; border:1px solid #3a3f46; }
+  a.pill { color:#c7cde0; }
+  .exp-flag { background:#b91c1c; color:#fff; font-weight:700; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Reconnaissance Report
+    {% if data.active %}<span class="badge-active active-yes">ACTIVE SCAN</span>
+    {% else %}<span class="badge-active active-no">PASSIVE</span>{% endif %}
+  </h1>
+  <div class="meta">
+    Targets: <strong>{{ data.targets | join(", ") }}</strong> &nbsp;·&nbsp;
+    Started {{ data.started }} &nbsp;·&nbsp; Finished {{ data.finished or "—" }}
+  </div>
+</header>
+<main>
+
+  {% set s = data.summary %}
+  <div class="cards">
+    <div class="card"><div class="n">{{ s.hosts }}</div><div class="l">Hosts</div></div>
+    <div class="card"><div class="n">{{ s.resolved_hosts }}</div><div class="l">Resolved</div></div>
+    <div class="card"><div class="n">{{ s.services }}</div><div class="l">Open ports</div></div>
+    <div class="card"><div class="n">{{ s.http_endpoints }}</div><div class="l">HTTP endpoints</div></div>
+    <div class="card"><div class="n">{{ s.crawl_urls }}</div><div class="l">URLs</div></div>
+    <div class="card"><div class="n">{{ s.findings }}</div><div class="l">Findings</div></div>
+    <div class="card"><div class="n" style="color:{{ '#f87171' if s.exploits else 'inherit' }}">{{ s.exploits }}</div><div class="l">Exploits</div></div>
+  </div>
+
+  {# ---- Findings ---- #}
+  <section>
+    <h2>Findings ({{ s.findings }})</h2>
+    {% if s.findings %}
+      <div class="sevbar">
+        {% for sev in severity_order %}
+          {% set c = s.findings_by_severity[sev] %}
+          {% if c %}<span style="flex:{{ c }};background:{{ severity_colors[sev] }}">{{ c }} {{ sev }}</span>{% endif %}
+        {% endfor %}
+      </div>
+      <table>
+        <thead><tr><th>Severity</th><th>Name</th><th>Host / Matched</th><th>Template</th><th>Tags</th></tr></thead>
+        <tbody>
+        {% for f in data.findings %}
+          <tr>
+            <td><span class="sev" style="background:{{ severity_colors[f.severity] }}">{{ f.severity }}</span></td>
+            <td>
+              {{ f.name }}
+              {% if f.exploits %}<a href="#exploits" class="sev exp-flag">⚡ {{ f.exploits | length }} exploit{{ 's' if f.exploits|length != 1 }}</a>{% endif %}
+              {% if f.description %}<div class="muted">{{ f.description | truncate(160) }}</div>{% endif %}
+              {% for c in f.cves %}<a class="pill" href="https://nvd.nist.gov/vuln/detail/{{ c }}">{{ c }}</a>{% endfor %}
+            </td>
+            <td><a href="{{ f.matched_at or f.host }}">{{ f.matched_at or f.host }}</a></td>
+            <td><code>{{ f.template_id }}</code></td>
+            <td>{% for t in f.tags[:5] %}<span class="pill">{{ t }}</span>{% endfor %}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="empty">No findings{% if not data.active %} — vuln scanning runs only in --active mode{% endif %}.</div>
+    {% endif %}
+  </section>
+
+  {# ---- Exploits available ---- #}
+  {% set exploitable = data.findings | selectattr("exploits") | list %}
+  {% if exploitable %}
+  <section id="exploits">
+    <h2>⚡ Public exploits available ({{ s.findings_with_exploits }} finding(s) · {{ s.exploits }} exploit(s))</h2>
+    <p class="muted">Public exploit / proof-of-concept code was found for the CVEs below.
+       Validate against your authorization scope before use.</p>
+    {% for f in exploitable %}
+    <div class="exp-card">
+      <div class="exp-head">
+        <span class="sev" style="background:{{ severity_colors[f.severity] }}">{{ f.severity }}</span>
+        <strong>{{ f.name }}</strong>
+        {% for c in f.cves %}<a class="pill" href="https://nvd.nist.gov/vuln/detail/{{ c }}">{{ c }}</a>{% endfor %}
+      </div>
+      <div class="muted"><a href="{{ f.matched_at or f.host }}">{{ f.matched_at or f.host }}</a></div>
+      <ul class="exp-list">
+        {% for ex in f.exploits %}
+        <li>
+          <span class="src src-{{ ex.source }}">{{ ex.source }}</span>
+          <a href="{{ ex.url }}">{{ ex.title | truncate(80) }}</a>
+          {% if ex.local_path %}<span class="muted"> — <code>{{ ex.local_path }}</code></span>{% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endfor %}
+  </section>
+  {% endif %}
+
+  {# ---- Screenshots ---- #}
+  {% set shots = data.endpoints | selectattr("screenshot") | list %}
+  {% if shots %}
+  <section>
+    <h2>Screenshots ({{ shots | length }})</h2>
+    <div class="grid">
+      {% for e in shots %}
+      <div class="shot">
+        <a href="{{ e.url }}" title="{{ e.url }}"><img loading="lazy" src="{{ e.screenshot }}" alt="{{ e.url }}"></a>
+        <div class="cap">
+          <a href="{{ e.url }}">{{ e.url | truncate(48) }}</a>
+          <div class="st">{{ e.status }} · {{ e.title | truncate(40) if e.title else "" }}</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  {# ---- HTTP endpoints ---- #}
+  <section>
+    <h2>HTTP endpoints ({{ s.http_endpoints }})</h2>
+    {% if data.endpoints %}
+    <table>
+      <thead><tr><th>Status</th><th>URL</th><th>Title</th><th>Server</th><th>Tech</th><th>Len</th></tr></thead>
+      <tbody>
+      {% for e in data.endpoints %}
+        <tr>
+          <td class="status-{{ (e.status // 100) if e.status else 0 }}xx">{{ e.status or "—" }}</td>
+          <td><a href="{{ e.url }}">{{ e.url }}</a>{% if e.cdn %} <span class="pill">CDN:{{ e.cdn }}</span>{% endif %}</td>
+          <td>{{ e.title | truncate(60) if e.title else "" }}</td>
+          <td>{{ e.webserver or "" }}</td>
+          <td>{% for t in e.tech[:6] %}<span class="pill">{{ t }}</span>{% endfor %}</td>
+          <td class="muted">{{ e.content_length if e.content_length is not none else "" }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}<div class="empty">No HTTP endpoints found.</div>{% endif %}
+  </section>
+
+  {# ---- Services ---- #}
+  {% if data.services %}
+  <section>
+    <h2>Open ports &amp; services ({{ s.services }})</h2>
+    <table>
+      <thead><tr><th>Host</th><th>IP</th><th>Port</th><th>Service</th><th>Product / Version</th></tr></thead>
+      <tbody>
+      {% for sv in data.services %}
+        <tr>
+          <td>{{ sv.host }}</td><td class="muted">{{ sv.ip or "" }}</td>
+          <td><code>{{ sv.port }}/{{ sv.protocol }}</code></td>
+          <td>{{ sv.service or "" }}</td>
+          <td class="muted">{{ (sv.product or "") ~ " " ~ (sv.version or "") }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </section>
+  {% endif %}
+
+  {# ---- Hosts ---- #}
+  <section>
+    <h2>Hosts ({{ s.hosts }})</h2>
+    {% if data.hosts %}
+    <table>
+      <thead><tr><th>Host</th><th>Resolved</th><th>IPs</th><th>CNAME</th><th>Sources</th></tr></thead>
+      <tbody>
+      {% for h in data.hosts %}
+        <tr>
+          <td>{{ h.name }}</td>
+          <td>{{ "✓" if h.resolved else "" }}</td>
+          <td class="muted">{{ h.ips | join(", ") }}</td>
+          <td class="muted">{{ h.cname or "" }}</td>
+          <td>{% for src in h.sources %}<span class="pill">{{ src }}</span>{% endfor %}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}<div class="empty">No hosts discovered.</div>{% endif %}
+  </section>
+
+  {# ---- Crawled URLs ---- #}
+  {% if data.crawl_urls %}
+  <section>
+    <h2>Crawled / archived URLs ({{ s.crawl_urls }})</h2>
+    <details>
+      <summary>Show first 200 URLs</summary>
+      <table>
+        <thead><tr><th>URL</th><th>Source</th></tr></thead>
+        <tbody>
+        {% for u in data.crawl_urls[:200] %}
+          <tr><td><a href="{{ u.url }}">{{ u.url }}</a></td><td class="muted">{{ u.source }}</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </details>
+  </section>
+  {% endif %}
+
+  {# ---- Stage log ---- #}
+  <section>
+    <h2>Pipeline stages</h2>
+    <table>
+      <thead><tr><th>Stage</th><th>Status</th><th>Produced</th><th>Duration</th><th>Note</th></tr></thead>
+      <tbody>
+      {% for st in data.stages %}
+        <tr>
+          <td>{{ st.name }}</td>
+          <td>{{ st.status }}</td>
+          <td>{{ st.produced }}</td>
+          <td class="muted">{{ st.duration_s }}s</td>
+          <td class="muted">{{ st.note }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <p class="muted" style="margin-top:40px;font-size:12px;">
+    Generated by ceh-automation · {{ data.finished or data.started }} ·
+    Only test systems you are authorized to assess.
+  </p>
+</main>
+</body>
+</html>

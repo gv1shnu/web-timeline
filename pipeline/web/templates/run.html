@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}{{ meta.target if meta else run_id }} · ceh-recon{% endblock %}
+{% block body %}
+<style>
+  main { max-width:100%; padding:0; }
+  .runbar { display:flex; align-items:center; gap:16px; padding:14px 28px; border-bottom:1px solid var(--border); background:#141824; }
+  .runbar .target { font-size:15px; font-weight:600; }
+  .runbar .m { color:var(--muted); font-size:12px; }
+  .frame-wrap { height:calc(100vh - 60px - 52px); }
+  iframe { width:100%; height:100%; border:0; background:var(--bg); }
+</style>
+<div class="runbar">
+  <a href="/" class="m">← Runs</a>
+  {% if meta %}
+  <span class="target">{{ meta.target }}</span>
+  <span class="badge {{ 'badge-active' if meta.active else 'badge-passive' }}">{{ 'active' if meta.active else 'passive' }}</span>
+  <span class="m">{{ meta.summary.findings or 0 }} findings ·
+    {% if meta.summary.exploits %}<span style="color:#f87171">{{ meta.summary.exploits }} exploits</span> ·{% endif %}
+    {{ meta.started }}</span>
+  {% endif %}
+  <span style="flex:1"></span>
+  <a class="m" href="/runs/{{ run_id }}/report.html" target="_blank">Open full report ↗</a>
+</div>
+<div class="frame-wrap">
+  <iframe src="/runs/{{ run_id }}/report.html" title="Recon report"></iframe>
+</div>
+{% endblock %}

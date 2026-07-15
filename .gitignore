@@ -1,0 +1,24 @@
+# Scan output (can contain sensitive target data — never commit)
+output/
+*.jsonl
+gowitness.sqlite3
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+env/
+.env
+*.egg-info/
+.pytest_cache/
+
+# Local tooling / editor state
+.claude/
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

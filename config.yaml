@@ -1,0 +1,66 @@
+# ceh-automation — default configuration.
+# Every key is optional; anything omitted falls back to the built-in defaults
+# in pipeline/config.py. Pass with:  python recon.py example.com -c config.yaml
+
+# --- global ---
+output_dir: output
+active: false            # master switch for active stages (or use --active)
+threads: 40
+rate_limit: 150          # req/s cap for tools that honour it
+resolvers:
+  - 1.1.1.1
+  - 8.8.8.8
+  - 9.9.9.9
+
+# --- which stages run ---
+stages:
+  subdomains: true
+  resolve: true
+  ports: true            # ACTIVE
+  http_probe: true
+  crawl: true
+  screenshots: true
+  vulns: true            # ACTIVE
+  exploits: true         # passive: look up public exploits for CVE findings
+
+# --- subdomain discovery ---
+subfinder_all_sources: true
+amass_enabled: false     # amass passive is thorough but slow
+include_crtsh: true
+
+# --- port scanning ---
+ports: "top-1000"        # "top-1000" | "1-65535" | "80,443,8080-8090"
+port_scan_tool: naabu    # naabu | nmap
+nmap_service_scan: true  # run nmap -sV on discovered ports for versions
+
+# --- vulnerability scanning (nuclei) ---
+nuclei_severity: "low,medium,high,critical"
+nuclei_tags: ""          # e.g. "cve,exposure,misconfig"
+nuclei_rate_limit: 150
+
+# --- exploit enrichment ---
+exploit_sources:         # where to look up exploits for CVE findings
+  - searchsploit         # offline Exploit-DB (needs `exploitdb` installed)
+  - github               # trickest/cve -> GitHub PoC map (HTTPS, no key)
+exploits_per_finding: 15 # cap exploit links attached to each finding
+
+# --- crawling ---
+crawl_depth: 2
+crawl_tools:
+  - katana
+  - waybackurls
+  - gau
+
+# --- screenshots ---
+screenshot_timeout: 15
+
+# --- per-stage timeouts (seconds) ---
+timeouts:
+  subdomains: 600
+  resolve: 300
+  ports: 1800
+  http_probe: 600
+  crawl: 900
+  screenshots: 900
+  vulns: 3600
+  exploits: 600

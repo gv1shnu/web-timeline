@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Dashboard · ceh-recon{% endblock %}
+{% block nav_dash %}active{% endblock %}
+{% set sevcolors = {"critical":"#7c1d1d","high":"#b91c1c","medium":"#c2740c","low":"#2563eb","info":"#4b5563","unknown":"#6b7280"} %}
+{% block body %}
+<style>
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(340px,1fr)); gap:16px; }
+  .run { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px 18px; transition:border-color .15s; }
+  .run:hover { border-color:var(--accent); }
+  .run .top { display:flex; align-items:center; justify-content:space-between; margin-bottom:2px; }
+  .run .target { font-size:16px; font-weight:600; }
+  .run .when { color:var(--muted); font-size:12px; margin-bottom:12px; }
+  .stats { display:grid; grid-template-columns:repeat(5,1fr); gap:6px; margin-bottom:12px; }
+  .stat { text-align:center; background:#12151d; border:1px solid var(--border); border-radius:8px; padding:7px 2px; }
+  .stat .n { font-size:16px; font-weight:700; }
+  .stat .l { font-size:9.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; }
+  .sevbar { display:flex; height:8px; border-radius:5px; overflow:hidden; margin-bottom:14px; background:#12151d; }
+  .sevbar span { display:block; }
+  .run .foot { display:flex; align-items:center; justify-content:space-between; }
+  .exploit-tag { color:#f87171; font-size:12px; font-weight:600; }
+  .empty { text-align:center; padding:70px 20px; color:var(--muted); }
+</style>
+
+<h1>Scan runs</h1>
+<div class="sub">{{ runs|length }} run(s) · newest first</div>
+
+{% if runs %}
+<div class="grid">
+  {% for r in runs %}
+  {% set s = r.summary %}
+  <div class="run">
+    <div class="top">
+      <span class="target">{{ r.target }}</span>
+      <span class="badge {{ 'badge-active' if r.active else 'badge-passive' }}">{{ 'active' if r.active else 'passive' }}</span>
+    </div>
+    <div class="when">{{ r.started }}</div>
+    <div class="stats">
+      <div class="stat"><div class="n">{{ s.hosts or 0 }}</div><div class="l">Hosts</div></div>
+      <div class="stat"><div class="n">{{ s.services or 0 }}</div><div class="l">Ports</div></div>
+      <div class="stat"><div class="n">{{ s.http_endpoints or 0 }}</div><div class="l">HTTP</div></div>
+      <div class="stat"><div class="n">{{ s.findings or 0 }}</div><div class="l">Findings</div></div>
+      <div class="stat"><div class="n" style="color:{{ '#f87171' if s.exploits else 'var(--fg)' }}">{{ s.exploits or 0 }}</div><div class="l">Exploits</div></div>
+    </div>
+    {% if s.findings %}
+    <div class="sevbar">
+      {% for sev in severity_order %}
+        {% set c = (s.findings_by_severity or {}).get(sev, 0) %}
+        {% if c %}<span style="flex:{{ c }};background:{{ sevcolors[sev] }}"></span>{% endif %}
+      {% endfor %}
+    </div>
+    {% else %}<div style="height:8px;margin-bottom:14px;"></div>{% endif %}
+    <div class="foot">
+      {% if s.findings_with_exploits %}
+        <span class="exploit-tag">⚡ {{ s.findings_with_exploits }} exploitable</span>
+      {% else %}<span class="muted" style="font-size:12px;">no exploits</span>{% endif %}
+      {% if r.has_report %}<a href="/run/{{ r.id }}">View report →</a>{% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty">
+  <p>No scans yet.</p>
+  <a class="btn" href="/new" style="display:inline-block;">Run your first scan</a>
+</div>
+{% endif %}
+{% endblock %}
