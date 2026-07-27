@@ -10,9 +10,9 @@ import json
 import urllib.request
 import urllib.parse
 
+from .. import USER_AGENT, runner
 from ..models import Host, StageRun
 from ..util import clean_host, in_scope
-from .. import runner
 from .base import Stage, StageContext
 
 
@@ -73,7 +73,7 @@ class SubdomainStage(Stage):
         """Query crt.sh certificate transparency logs (best-effort)."""
         url = "https://crt.sh/?q=" + urllib.parse.quote(f"%.{domain}") + "&output=json"
         try:
-            req = urllib.request.Request(url, headers={"User-Agent": "ceh-automation/0.1"})
+            req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
             with urllib.request.urlopen(req, timeout=30) as resp:
                 data = json.loads(resp.read().decode("utf-8", "replace"))
         except Exception as exc:  # noqa: BLE001 - crt.sh is flaky; degrade quietly

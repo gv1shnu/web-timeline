@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}New scan · ceh-recon{% endblock %}
+{% block title %}New scan · web-timeline{% endblock %}
 {% block nav_new %}active{% endblock %}
 {% block body %}
 <style>
@@ -18,6 +18,12 @@
 
 <h1>New scan</h1>
 <div class="sub">Enter one or more target domains. Passive by default.</div>
+
+{% if error %}
+<div class="check warn" style="margin-bottom:16px;">
+  <div><div class="t">Scan not started</div><div class="d">{{ error }}</div></div>
+</div>
+{% endif %}
 
 <form class="form-card" method="post" action="/scan" onsubmit="return check()">
   <label class="field" for="domains">Target domains</label>

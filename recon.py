@@ -1,14 +1,19 @@
 #!/usr/bin/env python3
-"""ceh-automation — domain reconnaissance pipeline.
+"""web-timeline — tiered web-application offensive-security pipeline.
 
 Usage:
-    python recon.py example.com
-    python recon.py example.com sub.example.com --active
-    python recon.py -f domains.txt -o output --config config.yaml --active
+    python recon.py example.com                                  # passive
+    python recon.py example.com sub.example.com --active         # + scanning
+    python recon.py -f domains.txt -o output --config config.yaml --exploit
 
-Passive stages (subdomains, DNS, HTTP probe, crawl, screenshots) run by default.
-Active stages (port scan, nuclei vuln scan) require --active AND are only
-appropriate against systems you are explicitly authorized to test.
+Three gated tiers, each opt-in:
+  passive   (default)  — subdomains, DNS, HTTP probe, crawl, screenshots.
+  active    (--active) — port scan, nuclei vuln scan, SQLi/XSS detection.
+  offensive (--exploit)— exploitation, credential attacks, data extraction.
+
+Active and offensive stages send intrusive traffic and are only appropriate
+against systems you own or are explicitly authorized to test. --exploit
+additionally requires written authorization.
 """
 
 from __future__ import annotations
@@ -24,10 +29,10 @@ from pipeline import runner
 
 REQUIRED_TOOLS = ["subfinder", "dnsx", "httpx", "naabu", "nmap", "nuclei",
                   "katana", "gowitness", "assetfinder", "waybackurls", "gau", "amass",
-                  "searchsploit"]
+                  "searchsploit", "sqlmap", "dalfox", "john", "hydra", "msfconsole"]
 
 BANNER = r"""
-  ceh-automation  ·  domain recon pipeline  v{ver}
+  web-timeline  ·  tiered web-app offensive-security pipeline  v{ver}
 """.format(ver=__version__)
 
 
@@ -43,9 +48,11 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     p.add_argument("-c", "--config", help="YAML config file (overrides defaults)")
     p.add_argument("-o", "--output", help="Output directory (default: output/)")
     p.add_argument("--active", action="store_true",
-                   help="Enable ACTIVE stages (port scan + nuclei). Authorization required.")
+                   help="Enable ACTIVE stages (scanning + enumeration). Authorization required.")
+    p.add_argument("--exploit", action="store_true",
+                   help="Enable OFFENSIVE stages (exploitation). Implies --active. Written authorization required.")
     p.add_argument("--yes", action="store_true",
-                   help="Skip the active-mode confirmation prompt (for automation).")
+                   help="Skip the active/offensive confirmation prompt (for automation).")
     p.add_argument("-q", "--quiet", action="store_true", help="Reduce console output")
     p.add_argument("--list-tools", action="store_true",
                    help="Show which recon tools are installed and exit")
@@ -73,12 +80,19 @@ def gather_domains(args: argparse.Namespace) -> list[str]:
     return domains
 
 
-def confirm_active(domains: list[str]) -> bool:
-    print("\n  ⚠  ACTIVE mode sends real scan traffic (port + vulnerability probes)")
-    print("     to the following targets:\n")
+def confirm_active(domains: list[str], offensive: bool = False) -> bool:
+    if offensive:
+        print("\n  ⚠  OFFENSIVE mode actively EXPLOITS the following targets")
+        print("     (data extraction, credential attacks, exploit execution):\n")
+    else:
+        print("\n  ⚠  ACTIVE mode sends real scan traffic (enumeration + vulnerability probes)")
+        print("     to the following targets:\n")
     for d in domains:
         print(f"       · {d}")
-    print("\n     Only proceed if you own these systems or have written authorization.")
+    if offensive:
+        print("\n     Proceed ONLY against systems you own or hold WRITTEN authorization to test.")
+    else:
+        print("\n     Only proceed if you own these systems or have written authorization.")
     try:
         answer = input("     Type 'yes' to continue: ").strip().lower()
     except EOFError:
@@ -104,10 +118,13 @@ def main(argv: list[str]) -> int:
         config.output_dir = args.output
     if args.active:
         config.active = True
+    if args.exploit:
+        config.active = True       # offensive tier implies active
+        config.offensive = True
 
     if config.active and not args.yes and sys.stdin.isatty():
-        if not confirm_active(domains):
-            print("\n  Aborted. (Run without --active for passive-only recon.)")
+        if not confirm_active(domains, offensive=config.offensive):
+            print("\n  Aborted. (Run without --active/--exploit for passive-only recon.)")
             return 1
 
     orch = Orchestrator(domains, config, verbose=not args.quiet)

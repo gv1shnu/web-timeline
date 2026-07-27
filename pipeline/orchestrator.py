@@ -37,7 +37,7 @@ class Orchestrator:
 
         run_dir = self._make_run_dir()
         results = ReconResults(targets=self.targets, active=self.config.active,
-                               started=utcnow())
+                               offensive=self.config.offensive, started=utcnow())
         ctx = StageContext(config=self.config, results=results, run_dir=run_dir,
                            targets=self.targets, log=self.log)
 
@@ -77,6 +77,9 @@ class Orchestrator:
               f"med {sev['medium']}, low {sev['low']}, info {sev['info']})")
         print(f"  Exploits found   : {s['exploits']}  "
               f"(for {s['findings_with_exploits']} finding(s))")
+        if results.offensive or s['credentials'] or s['loot'] or s['secrets']:
+            print(f"  Credentials      : {s['credentials']}  "
+                  f"·  Loot items : {s['loot']}  ·  Secrets : {s['secrets']}")
         print("-" * 56)
         print(f"  JSON   : {run_dir / 'results.json'}")
         print(f"  Report : {report}")

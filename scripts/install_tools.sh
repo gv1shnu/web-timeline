@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 #
-# install_tools.sh — install the recon toolchain for the ceh-automation pipeline.
+# install_tools.sh — install the full toolchain (recon + active + offensive)
+#                    for the web-timeline pipeline.
 #
 # Strategy:
 #   * Prefer Homebrew formulae (fast, prebuilt) for tools that ship one.
@@ -76,6 +77,13 @@ done
 # gowitness (screenshots) + others live in brew too when available.
 brew_install gowitness
 
+# Offensive tier: web-app attack + password-cracking tools.
+log "Installing web-app attack + cracking tools (active/offensive tiers)"
+brew_install sqlmap        # SQL injection detection + exploitation
+brew_install hydra         # online credential attacks
+brew_install john-jumbo    # John the Ripper (jumbo) — hash cracking + unshadow
+brew_install dalfox        # XSS scanning / confirmation
+
 # Refresh PATH now that Go may have just been installed.
 GOBIN="$(go env GOPATH 2>/dev/null)/bin"; export PATH="$PATH:$GOBIN"
 
@@ -93,6 +101,8 @@ go_install gau          github.com/lc/gau/v2/cmd/gau@latest
 command -v subfinder >/dev/null 2>&1 || go_install subfinder github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest
 command -v nuclei    >/dev/null 2>&1 || go_install nuclei    github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
 command -v katana    >/dev/null 2>&1 || go_install katana    github.com/projectdiscovery/katana/cmd/katana@latest
+# dalfox ships a Go package too — fall back to it if the brew formula was unavailable.
+command -v dalfox    >/dev/null 2>&1 || go_install dalfox    github.com/hahwul/dalfox/v2@latest
 
 # nuclei templates (idempotent; updates if already present).
 if command -v nuclei >/dev/null 2>&1; then
@@ -103,7 +113,7 @@ fi
 # --- Verification -----------------------------------------------------------
 echo
 log "Verification"
-tools=(nmap amass subfinder dnsx naabu httpx nuclei katana gowitness assetfinder waybackurls gau searchsploit)
+tools=(nmap amass subfinder dnsx naabu httpx nuclei katana gowitness assetfinder waybackurls gau searchsploit sqlmap dalfox hydra john)
 missing=0
 for t in "${tools[@]}"; do
   if command -v "$t" >/dev/null 2>&1; then

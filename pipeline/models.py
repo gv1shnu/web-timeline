@@ -116,6 +116,35 @@ class Finding:
 
 
 @dataclass
+class Credential:
+    """A username/password pair recovered during the offensive tier."""
+    host: str
+    service: str = "http"
+    username: str = ""
+    password: str | None = None
+    source: str = ""            # sqli-dump | auth_attack | crack
+    validated: bool = False
+
+
+@dataclass
+class Secret:
+    """A leaked key/token/credential string found in client-side content."""
+    url: str
+    kind: str                   # api-key | token | aws | jwt | ...
+    value: str
+    source: str = "js_recon"
+
+
+@dataclass
+class Loot:
+    """A reference to data extracted during the offensive tier."""
+    kind: str                   # db-dump | file | hash-set
+    source: str                 # producing stage name
+    summary: str = ""
+    path: str | None = None     # path (relative to run dir) to the extracted artifact
+
+
+@dataclass
 class StageRun:
     """Metadata about one stage execution — surfaced in the report."""
     name: str
@@ -133,6 +162,7 @@ class ReconResults:
     """The single aggregated result object for a whole run."""
     targets: list[str] = field(default_factory=list)
     active: bool = False
+    offensive: bool = False
     started: str = field(default_factory=utcnow)
     finished: str | None = None
     hosts: dict[str, Host] = field(default_factory=dict)
@@ -140,6 +170,9 @@ class ReconResults:
     endpoints: list[HttpEndpoint] = field(default_factory=list)
     crawl_urls: list[CrawlUrl] = field(default_factory=list)
     findings: list[Finding] = field(default_factory=list)
+    credentials: list[Credential] = field(default_factory=list)
+    secrets: list[Secret] = field(default_factory=list)
+    loot: list[Loot] = field(default_factory=list)
     stages: list[StageRun] = field(default_factory=list)
 
     # -- mutation helpers ---------------------------------------------------
@@ -165,6 +198,9 @@ class ReconResults:
             "findings_by_severity": sev_counts,
             "findings_with_exploits": sum(1 for f in self.findings if f.exploits),
             "exploits": sum(len(f.exploits) for f in self.findings),
+            "credentials": len(self.credentials),
+            "secrets": len(self.secrets),
+            "loot": len(self.loot),
         }
 
     # -- serialization ------------------------------------------------------
@@ -172,6 +208,7 @@ class ReconResults:
         return {
             "targets": self.targets,
             "active": self.active,
+            "offensive": self.offensive,
             "started": self.started,
             "finished": self.finished,
             "summary": self.summary(),
@@ -180,6 +217,9 @@ class ReconResults:
             "endpoints": [asdict(e) for e in self.endpoints],
             "crawl_urls": [asdict(c) for c in self.crawl_urls],
             "findings": [asdict(f) for f in self.findings],
+            "credentials": [asdict(c) for c in self.credentials],
+            "secrets": [asdict(s) for s in self.secrets],
+            "loot": [asdict(l) for l in self.loot],
             "stages": [asdict(s) for s in self.stages],
         }
 

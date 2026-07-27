@@ -101,13 +101,28 @@ def create_app(output_dir: str = "output") -> Flask:
         domains = [d.strip() for d in raw.replace(",", " ").split() if d.strip()]
         if not domains:
             return redirect(url_for("new_scan"))
+
+        active = request.form.get("active") == "on"
+        offensive = request.form.get("offensive") == "on"
+        authorized = request.form.get("authorized") == "on"
+        # Server-side gate: any active/offensive run must carry explicit
+        # authorization, independent of the (bypassable) client-side control.
+        if (active or offensive) and not authorized:
+            return render_template(
+                "new_scan.html",
+                error="Active/offensive scanning requires confirming you are "
+                      "authorized to test these targets.",
+            ), 403
+
         config = Config()
         config.output_dir = str(out_root)
-        config.active = request.form.get("active") == "on"
+        config.active = active or offensive
+        config.offensive = offensive
 
         run_id = str(int(time.time() * 1000))
         LIVE_RUNS[run_id] = {"lines": [], "status": "running", "run_rel": None,
-                             "domains": domains, "active": config.active}
+                             "domains": domains, "active": config.active,
+                             "offensive": config.offensive}
         threading.Thread(target=run_scan, args=(run_id, domains, config),
                          daemon=True).start()
         return redirect(url_for("live", run_id=run_id))

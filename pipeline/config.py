@@ -20,7 +20,8 @@ except ImportError:  # pragma: no cover - yaml is a listed dependency
 class Config:
     # --- global -----------------------------------------------------------
     output_dir: str = "output"
-    active: bool = False           # gate for port/vuln scanning (opt-in)
+    active: bool = False           # gate for active scanning (opt-in)
+    offensive: bool = False        # gate for exploitation tier (opt-in; implies active)
     threads: int = 40
     rate_limit: int = 150          # requests/sec cap for tools that support it
     resolvers: list[str] = field(default_factory=lambda: ["1.1.1.1", "8.8.8.8"])
@@ -34,7 +35,14 @@ class Config:
         "crawl": True,
         "screenshots": True,
         "vulns": True,        # active
+        "sqli_detect": True,  # active
+        "xss_detect": True,   # active
         "exploits": True,     # passive enrichment of vuln findings
+        "sqli_exploit": True, # offensive
+        "xss_confirm": True,  # offensive
+        "auth_attack": True,  # offensive
+        "exploit_run": True,  # offensive
+        "crack": True,        # offensive
     })
 
     # --- per-stage tuning -------------------------------------------------
@@ -49,6 +57,39 @@ class Config:
     nuclei_severity: str = "low,medium,high,critical"
     nuclei_tags: str = ""          # optional template tag filter
     nuclei_rate_limit: int = 150
+
+    # --- sql injection (sqlmap) ------------------------------------------
+    sqli_max_urls: int = 50        # cap parameterized URLs tested per run
+    sqlmap_level: int = 1          # sqlmap --level (1-5): test depth
+    sqlmap_risk: int = 1           # sqlmap --risk (1-3): payload aggressiveness
+    sqlmap_dump: bool = True       # OFFENSIVE: extract data from injectable params
+    sqlmap_dump_max_rows: int = 100  # --stop cap per table (bounds extraction)
+    sqlmap_os_shell: bool = False  # OFFENSIVE (opt-in): attempt OS command execution
+
+    # --- cross-site scripting (dalfox) -----------------------------------
+    xss_max_urls: int = 100        # cap parameterized URLs tested per run
+    dalfox_workers: int = 40       # dalfox concurrency (-w)
+    xss_blind_callback: str = ""   # OFFENSIVE (opt-in): out-of-band host for blind XSS
+
+    # --- password cracking (john) ----------------------------------------
+    crack_wordlist: str = ""       # wordlist path; empty = john's default mode
+    crack_max_hashes: int = 500    # cap hashes fed to the cracker per run
+    crack_format: str = ""         # force a john --format (empty = auto-detect)
+
+    # --- credential attacks (hydra) --------------------------------------
+    auth_userlist: str = ""        # usernames file; empty = small built-in common set
+    auth_passlist: str = ""        # passwords file; empty = small built-in common set
+    auth_max_targets: int = 10     # cap login surfaces attacked per run
+    auth_form: str = ""            # optional hydra http-post-form spec for form logins
+    auth_stop_on_success: bool = True  # hydra -f: stop a target after first valid pair
+
+    # --- CVE exploitation (exploit_run) ----------------------------------
+    # Auto-execution runs ONLY through vetted engines (nuclei templates). Third-
+    # party PoCs are fetched/staged for manual review, never auto-executed.
+    exploit_run_engines: list[str] = field(default_factory=lambda: ["nuclei"])
+    exploit_run_max_cves: int = 25     # cap CVEs fired per run
+    exploit_run_stage_pocs: bool = True   # write per-CVE PoC pointer manifest
+    exploit_run_msf_script: bool = True   # emit an MSF resource script (staged, not run)
 
     # --- exploit enrichment -----------------------------------------------
     exploit_sources: list[str] = field(default_factory=lambda: ["searchsploit", "github"])
@@ -69,7 +110,14 @@ class Config:
         "crawl": 900,
         "screenshots": 900,
         "vulns": 3600,
+        "sqli_detect": 1800,
+        "xss_detect": 1800,
         "exploits": 600,
+        "sqli_exploit": 3600,
+        "xss_confirm": 1800,
+        "auth_attack": 1800,
+        "exploit_run": 3600,
+        "crack": 3600,
     })
 
     def timeout_for(self, stage: str) -> int:
@@ -79,6 +127,25 @@ class Config:
         if active_stage and not self.active:
             return False
         return self.stages.get(stage, True)
+
+    # --- tier gating (passive < active < offensive) -----------------------
+    _TIER_ORDER = ("passive", "active", "offensive")
+
+    def tier_ceiling(self) -> str:
+        """Highest tier this run is permitted to reach."""
+        if self.offensive:
+            return "offensive"
+        if self.active:
+            return "active"
+        return "passive"
+
+    def stage_allowed(self, stage_tier: str) -> bool:
+        """True if a stage of ``stage_tier`` may run under the current ceiling."""
+        order = self._TIER_ORDER
+        try:
+            return order.index(stage_tier) <= order.index(self.tier_ceiling())
+        except ValueError:
+            return True  # unknown tier: don't silently gate it out
 
 
 def load_config(path: str | None) -> Config:

@@ -63,6 +63,14 @@ class Stage(ABC):
     tools: list[str] = []
     active: bool = False           # active == intrusive; gated by config.active
     requires_any_tool: bool = True  # skip if none of `tools` are installed
+    tier: str = ""                 # "" derives from `active`; or set explicitly
+    depends_on: list[str] = []     # stage names this stage consumes (for the DAG)
+
+    def effective_tier(self) -> str:
+        """Resolve this stage's tier: explicit ``tier`` wins, else from ``active``."""
+        if self.tier:
+            return self.tier
+        return "active" if self.active else "passive"
 
     @abstractmethod
     def execute(self, ctx: StageContext, record: StageRun) -> str:
@@ -78,9 +86,14 @@ class Stage(ABC):
                           started=utcnow())
         start = time.time()
 
-        if not ctx.config.stage_enabled(self.name, self.active):
-            reason = "disabled in config"
-            if self.active and not ctx.config.active:
+        enabled = ctx.config.stages.get(self.name, True)
+        tier = self.effective_tier()
+        if not enabled or not ctx.config.stage_allowed(tier):
+            if not enabled:
+                reason = "disabled in config"
+            elif tier == "offensive":
+                reason = "offensive stage — skipped (run with --exploit to enable)"
+            else:
                 reason = "active stage — skipped (run with --active to enable)"
             record.status = "skipped"
             record.note = reason
