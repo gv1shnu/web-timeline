@@ -13,6 +13,7 @@ from .xss import XssDetectStage, XssConfirmStage
 from .auth import AuthAttackStage
 from .crack import CrackStage
 from .exploits import ExploitStage
+from .correlate import CorrelateStage
 from .exploit_run import ExploitRunStage
 
 # Canonical execution order. Each stage is gated by its tier (passive < active <
@@ -28,6 +29,7 @@ STAGE_CLASSES = [
     SqliDetectStage,     # active
     XssDetectStage,      # active
     ExploitStage,        # passive
+    CorrelateStage,      # passive — capstone of pre-exploitation: cross-stage correlation
     SqliExploitStage,    # offensive
     XssConfirmStage,     # offensive
     AuthAttackStage,     # offensive

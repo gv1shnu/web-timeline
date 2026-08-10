@@ -54,6 +54,16 @@
   .src-github { background:#24292f; color:#fff; border:1px solid #3a3f46; }
   a.pill { color:#c7cde0; }
   .exp-flag { background:#b91c1c; color:#fff; font-weight:700; }
+  .insight-sec h2 { color:#fcd34d; }
+  .insight-sec { border:1px solid #4a3c14; border-radius:10px; padding:4px 16px 16px; background:#1a1710; }
+  .insight-card { background:var(--card); border:1px solid var(--border); border-left:3px solid #d97706; border-radius:8px; padding:12px 14px; margin-bottom:12px; }
+  .insight-head { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:4px; }
+  .insight-cat { background:#232838; color:#c7cde0; }
+  .insight-rationale { margin:6px 0; }
+  .insight-evidence { list-style:none; margin:6px 0 0; padding:0; font-size:12.5px; }
+  .insight-evidence li { padding:3px 0; border-top:1px solid var(--border); font-family:ui-monospace,SFMono-Regular,Menlo,monospace; word-break:break-all; }
+  .insight-next { margin-top:8px; padding-top:8px; border-top:1px dashed var(--border); font-size:12.5px; color:var(--muted); }
+  .insight-next strong { color:#fcd34d; }
 </style>
 </head>
 <body>
@@ -79,11 +89,43 @@
     <div class="card"><div class="n">{{ s.crawl_urls }}</div><div class="l">URLs</div></div>
     <div class="card"><div class="n">{{ s.findings }}</div><div class="l">Findings</div></div>
     <div class="card"><div class="n" style="color:{{ '#f87171' if s.exploits else 'inherit' }}">{{ s.exploits }}</div><div class="l">Exploits</div></div>
+    <div class="card"><div class="n" style="color:{{ '#fbbf24' if s.insights else 'inherit' }}">{{ s.insights }}</div><div class="l">Insights</div></div>
     {% if data.offensive or s.credentials or s.loot %}
     <div class="card"><div class="n" style="color:{{ '#f87171' if s.credentials else 'inherit' }}">{{ s.credentials }}</div><div class="l">Credentials</div></div>
     <div class="card"><div class="n" style="color:{{ '#f87171' if s.loot else 'inherit' }}">{{ s.loot }}</div><div class="l">Loot</div></div>
     {% endif %}
   </div>
+
+  {# ---- Correlated insights: chained/compound pre-exploitation intelligence ---- #}
+  {% if data.insights %}
+  <section id="insights" class="insight-sec">
+    <h2>🔗 Correlated insights ({{ s.insights }})</h2>
+    <p class="muted">Synthesized by cross-referencing hosts, ports, findings and crawled URLs
+       against each other — <strong>zero additional traffic sent to the target</strong>.
+       These are leads for an authorized human tester to verify, not confirmed exploits and
+       not a trigger for any automated action.</p>
+    {% for i in data.insights %}
+    <div class="insight-card">
+      <div class="insight-head">
+        <span class="sev" style="background:{{ severity_colors[i.severity] }}">{{ i.severity }}</span>
+        <span class="pill insight-cat">{{ i.category }}</span>
+        <span class="pill">confidence: {{ i.confidence }}</span>
+        <strong>{{ i.title }}</strong>
+      </div>
+      <div class="muted">{% for h in i.hosts %}<span class="pill">{{ h }}</span>{% endfor %}</div>
+      <p class="insight-rationale">{{ i.rationale }}</p>
+      {% if i.evidence %}
+      <ul class="insight-evidence">
+        {% for e in i.evidence %}<li>{{ e }}</li>{% endfor %}
+      </ul>
+      {% endif %}
+      {% if i.next_step %}
+      <div class="insight-next"><strong>Human next step:</strong> {{ i.next_step }}</div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </section>
+  {% endif %}
 
   {# ---- Offensive results: loot / credentials / secrets (lead with impact) ---- #}
   {% if data.credentials or data.loot or data.secrets %}

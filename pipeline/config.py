@@ -38,6 +38,7 @@ class Config:
         "sqli_detect": True,  # active
         "xss_detect": True,   # active
         "exploits": True,     # passive enrichment of vuln findings
+        "correlate": True,    # passive cross-stage correlation (no traffic)
         "sqli_exploit": True, # offensive
         "xss_confirm": True,  # offensive
         "auth_attack": True,  # offensive
@@ -90,11 +91,15 @@ class Config:
     exploit_run_max_cves: int = 25     # cap CVEs fired per run
     exploit_run_stage_pocs: bool = True   # write per-CVE PoC pointer manifest
     exploit_run_msf_script: bool = True   # emit an MSF resource script (staged, not run)
+    exploit_run_msf_resolve: bool = True  # run `msfconsole` search to resolve real modules per CVE (local DB lookup, no traffic)
 
     # --- exploit enrichment -----------------------------------------------
     exploit_sources: list[str] = field(default_factory=lambda: ["searchsploit", "github"])
     exploits_per_finding: int = 15     # cap exploits attached per finding
     exploit_github_base: str = "https://raw.githubusercontent.com/trickest/cve/main"
+
+    # --- correlation (cross-stage insight synthesis; zero extra traffic) --
+    correlate_max_evidence: int = 10   # cap evidence lines/URLs shown per insight
 
     crawl_depth: int = 2
     crawl_tools: list[str] = field(default_factory=lambda: ["katana", "waybackurls", "gau"])
@@ -113,6 +118,7 @@ class Config:
         "sqli_detect": 1800,
         "xss_detect": 1800,
         "exploits": 600,
+        "correlate": 120,
         "sqli_exploit": 3600,
         "xss_confirm": 1800,
         "auth_attack": 1800,

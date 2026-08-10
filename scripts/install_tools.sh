@@ -32,6 +32,16 @@ brew_install() {
   fi
 }
 
+brew_install_cask() {
+  local cask="$1"
+  if brew list --cask "$cask" >/dev/null 2>&1; then
+    ok "$cask (brew cask, already installed)"
+  else
+    log "brew install --cask $cask"
+    brew install --cask "$cask" >/dev/null 2>&1 && ok "$cask (brew cask)" || warn "$cask (brew cask failed)"
+  fi
+}
+
 go_install() {
   local bin="$1" pkg="$2"
   if command -v "$bin" >/dev/null 2>&1; then
@@ -74,8 +84,8 @@ for f in subfinder nuclei katana; do
   brew_install "$f"
 done
 
-# gowitness (screenshots) + others live in brew too when available.
-brew_install gowitness
+# gowitness (screenshots). The brew formula was removed upstream, so install via Go.
+go_install gowitness github.com/sensepost/gowitness@latest
 
 # Offensive tier: web-app attack + password-cracking tools.
 log "Installing web-app attack + cracking tools (active/offensive tiers)"
@@ -83,6 +93,18 @@ brew_install sqlmap        # SQL injection detection + exploitation
 brew_install hydra         # online credential attacks
 brew_install john-jumbo    # John the Ripper (jumbo) — hash cracking + unshadow
 brew_install dalfox        # XSS scanning / confirmation
+
+# Metasploit Framework — powers exploit_run's module resolution (msfconsole
+# search over the local module DB; no traffic is sent to targets).
+# NOTE: the Homebrew cask is deprecated (fails the macOS Gatekeeper check and is
+# scheduled for removal on 2026-09-01). If the cask is gone or msfconsole won't
+# launch, install via Rapid7's official macOS installer instead:
+#   https://docs.metasploit.com/docs/using-metasploit/getting-started/nightly-installers.html
+if command -v msfconsole >/dev/null 2>&1; then
+  ok "metasploit (already installed)"
+else
+  brew_install_cask metasploit
+fi
 
 # Refresh PATH now that Go may have just been installed.
 GOBIN="$(go env GOPATH 2>/dev/null)/bin"; export PATH="$PATH:$GOBIN"
@@ -113,11 +135,17 @@ fi
 # --- Verification -----------------------------------------------------------
 echo
 log "Verification"
-tools=(nmap amass subfinder dnsx naabu httpx nuclei katana gowitness assetfinder waybackurls gau searchsploit sqlmap dalfox hydra john)
+tools=(nmap amass subfinder dnsx naabu httpx nuclei katana gowitness assetfinder waybackurls gau searchsploit sqlmap dalfox hydra john msfconsole)
 missing=0
+# Resolve like the pipeline's runner does: prefer the Go bin copy (the
+# deliberately-built cgo-free binary) over a same-named tool earlier on PATH.
+resolve() {
+  [ -x "$GOBIN/$1" ] && { printf '%s\n' "$GOBIN/$1"; return 0; }
+  command -v "$1" 2>/dev/null
+}
 for t in "${tools[@]}"; do
-  if command -v "$t" >/dev/null 2>&1; then
-    ok "$(printf '%-14s' "$t") $DIM$(command -v "$t")$RST"
+  if path="$(resolve "$t")" && [ -n "$path" ]; then
+    ok "$(printf '%-14s' "$t") $DIM$path$RST"
   else
     warn "$(printf '%-14s' "$t") MISSING"
     missing=$((missing+1))

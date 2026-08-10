@@ -145,6 +145,24 @@ class Loot:
 
 
 @dataclass
+class Insight:
+    """A cross-stage correlation: a compound/chained risk synthesized from
+    otherwise-isolated facts (a dangling CNAME, an exposed management port, a
+    cluster of CVEs on one host, ...). This is pre-exploitation intelligence
+    for a human operator to verify and act on manually — the pipeline never
+    treats an Insight as a trigger for further automated action."""
+    id: str
+    title: str
+    category: str                 # takeover | exposure | injection-surface | infra | shadow-it | vuln-rollup
+    severity: str = "unknown"
+    confidence: str = "medium"    # low | medium | high
+    hosts: list[str] = field(default_factory=list)
+    evidence: list[str] = field(default_factory=list)
+    rationale: str = ""
+    next_step: str = ""           # what a human tester should verify/do manually
+
+
+@dataclass
 class StageRun:
     """Metadata about one stage execution — surfaced in the report."""
     name: str
@@ -170,6 +188,7 @@ class ReconResults:
     endpoints: list[HttpEndpoint] = field(default_factory=list)
     crawl_urls: list[CrawlUrl] = field(default_factory=list)
     findings: list[Finding] = field(default_factory=list)
+    insights: list[Insight] = field(default_factory=list)
     credentials: list[Credential] = field(default_factory=list)
     secrets: list[Secret] = field(default_factory=list)
     loot: list[Loot] = field(default_factory=list)
@@ -188,6 +207,9 @@ class ReconResults:
         sev_counts = {s: 0 for s in SEVERITY_ORDER}
         for f in self.findings:
             sev_counts[Severity.parse(f.severity).value] += 1
+        insight_sev_counts = {s: 0 for s in SEVERITY_ORDER}
+        for i in self.insights:
+            insight_sev_counts[Severity.parse(i.severity).value] += 1
         return {
             "hosts": len(self.hosts),
             "resolved_hosts": sum(1 for h in self.hosts.values() if h.resolved),
@@ -198,6 +220,8 @@ class ReconResults:
             "findings_by_severity": sev_counts,
             "findings_with_exploits": sum(1 for f in self.findings if f.exploits),
             "exploits": sum(len(f.exploits) for f in self.findings),
+            "insights": len(self.insights),
+            "insights_by_severity": insight_sev_counts,
             "credentials": len(self.credentials),
             "secrets": len(self.secrets),
             "loot": len(self.loot),
@@ -217,6 +241,7 @@ class ReconResults:
             "endpoints": [asdict(e) for e in self.endpoints],
             "crawl_urls": [asdict(c) for c in self.crawl_urls],
             "findings": [asdict(f) for f in self.findings],
+            "insights": [asdict(i) for i in self.insights],
             "credentials": [asdict(c) for c in self.credentials],
             "secrets": [asdict(s) for s in self.secrets],
             "loot": [asdict(l) for l in self.loot],

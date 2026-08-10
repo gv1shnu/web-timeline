@@ -25,6 +25,7 @@ stages:
   sqli_detect: true      # ACTIVE  (sqlmap detection)
   xss_detect: true       # ACTIVE  (dalfox detection)
   exploits: true         # passive: look up public exploits for CVE findings
+  correlate: true        # passive: cross-stage insight correlation (zero traffic)
   sqli_exploit: true     # OFFENSIVE (sqlmap --dump)
   xss_confirm: true      # OFFENSIVE (dalfox triggered-payload proof)
   auth_attack: true      # OFFENSIVE (hydra)
@@ -51,6 +52,9 @@ exploit_sources:         # where to look up exploits for CVE findings
   - searchsploit         # offline Exploit-DB (needs `exploitdb` installed)
   - github               # trickest/cve -> GitHub PoC map (HTTPS, no key)
 exploits_per_finding: 15 # cap exploit links attached to each finding
+
+# --- correlation (cross-stage insight synthesis; zero extra traffic) ---
+correlate_max_evidence: 10   # cap evidence lines/URLs shown per insight
 
 # --- crawling ---
 crawl_depth: 2
@@ -88,6 +92,7 @@ exploit_run_engines:        # vetted auto-exec engines only
 exploit_run_max_cves: 25
 exploit_run_stage_pocs: true   # write per-CVE PoC pointer manifest (not executed)
 exploit_run_msf_script: true   # emit a Metasploit resource script (staged, not run)
+exploit_run_msf_resolve: true  # msfconsole search cve:<id> (local DB lookup, no target traffic)
 
 # --- password cracking (john) ---
 crack_wordlist: ""          # wordlist path; empty = john default mode
@@ -106,6 +111,7 @@ timeouts:
   sqli_detect: 1800
   xss_detect: 1800
   exploits: 600
+  correlate: 120
   sqli_exploit: 3600
   xss_confirm: 1800
   auth_attack: 1800

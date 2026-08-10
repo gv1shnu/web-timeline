@@ -29,11 +29,14 @@ def _augmented_env() -> dict[str, str]:
 
 
 def tool_path(name: str) -> str | None:
-    found = shutil.which(name)
-    if found:
-        return found
+    # Prefer the copy in the Go bin dir: install_tools.sh deliberately builds
+    # the ProjectDiscovery tools (httpx/dnsx/naabu/...) there, cgo-free, to
+    # supersede a broken or same-named binary earlier on PATH (e.g. pip's
+    # unrelated `httpx` CLI, or a brew build with the SIGSEGV-prone resolver).
     candidate = GO_BIN / name
-    return str(candidate) if candidate.exists() else None
+    if candidate.exists():
+        return str(candidate)
+    return shutil.which(name)
 
 
 def have(name: str) -> bool:

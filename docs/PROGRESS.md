@@ -1,10 +1,75 @@
 # Progress / status
 
-Working notes for continuing this build. Last updated **2026-07-22**.
+Working notes for continuing this build. Last updated **2026-08-09**.
 
-> **Repo state:** on `main` at `9588c9e` (initial commit). All work below is
-> **uncommitted** in the working tree — not committed, not pushed. This machine
-> authenticates as `gv1shnu` (the repo owner), so commit + push when ready.
+> **Repo state:** on `main` at `7580d2b` ("add offensive side"). Uncommitted in
+> the working tree on top of that: an in-progress `exploit_run` MSF
+> module-resolution feature (see "In flight" below) **and** the new
+> `correlate` stage described in this update. Nothing has been committed this
+> session — explicitly asked not to.
+
+---
+
+## 2026-08-09 session — pre-exploitation correlation
+
+**Why:** exploitation itself is meant to be carried out by approved human
+professionals, not this pipeline. So the highest-leverage automation work is
+maximizing the *pre-exploitation* picture — connecting the isolated facts
+every stage already collects into compound, chained leads — so a human's
+first move is obvious before they ever touch the offensive tier.
+
+**Added: `correlate` stage** (`pipeline/stages/correlate.py`) — passive tier,
+zero external tools, zero additional target traffic. Runs after `exploits`,
+before the offensive stages. Six heuristics, each producing an `Insight`
+(new model: `id/title/category/severity/confidence/hosts/evidence/rationale/
+next_step` — every insight ends in an explicit human verification step, never
+an automated trigger):
+
+1. `subdomain-takeover` — dangling CNAME fingerprinted against ~30 claimable
+   third-party services.
+2. `sensitive-exposure` — crawled URLs matching VCS/env/backup/key/debug/
+   admin/API-schema path patterns.
+3. `injection-surface` — query-parameter *names* matching SSRF/redirect,
+   LFI/RFI, IDOR, command-injection conventions.
+4. `exposed-service` — DB/management ports directly reachable, escalated when
+   the same host is also CDN-fronted (origin-exposure signal).
+5. `shadow-it` — internal-sounding hostnames (staging/CI/admin/observability)
+   live on the public internet.
+6. `vuln-rollup` — hosts with ≥2 CVE-tagged findings rolled into one
+   prioritized target with an exploit-availability tally.
+
+Wired end-to-end: `models.py` (`Insight`, `ReconResults.insights`, summary
+counts), `stages/__init__.py` (STAGE_CLASSES order), `config.py`/`config.yaml`
+(`correlate` toggle, `correlate_max_evidence`, timeout), and a new report
+section (`report.html.j2`, amber-accented, right above the offensive-results
+section). Smoke-tested standalone against synthetic `ReconResults` (all 6
+heuristics fire correctly) and the full CLI still runs (`--list-tools`
+unaffected).
+
+**Also fixed while reading the codebase:** `config.yaml` was missing the
+`exploit_run_msf_resolve` key that `config.py`/`exploit_run.py` already
+supported (the in-flight MSF-resolution feature — see "In flight" below).
+
+**Deliberately not done this session** (would raise complexity meaningfully —
+good stopping point per instruction to pause and introspect before going
+further):
+- No new network calls added (no CISA KEV / EPSS / NVD enrichment yet, though
+  `exploits`/`vuln-rollup` are the natural place for it — see Backlog).
+- No `HttpEndpoint.headers` capture (would let `correlate` add a
+  missing-security-headers heuristic; `http_probe`/httpx doesn't capture
+  headers today).
+- No js_recon / secrets-in-JS stage (the `Secret` model already exists but
+  nothing populates it yet).
+
+## In flight (uncommitted, from before this session)
+`exploit_run` gained Metasploit module resolution: `msfconsole search
+cve:<id>` against the *local* module DB (no target traffic) to turn CVE
+findings into concrete candidate MSF modules, staged for manual review —
+never auto-fired. Touches `pipeline/stages/exploit_run.py`, `pipeline/
+runner.py` (tool_path now prefers the Go-built cgo-free binaries),
+`scripts/install_tools.sh` (gowitness via `go install`, Metasploit via brew
+cask), README/METHODOLOGY. This was functionally complete except the
+`config.yaml` doc gap fixed above.
 
 ---
 
