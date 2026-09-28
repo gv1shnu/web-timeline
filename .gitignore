@@ -15,7 +15,6 @@ env/
 .pytest_cache/
 
 # Local tooling / editor state
-.claude/
 .vscode/
 .idea/
 
